@@ -1,0 +1,37 @@
+id = "herdr-ssh-machines"
+name = "herdr-ssh-machines"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Adiciona e remove máquinas SSH no Herdr usando ~/.ssh/config e fzf"
+platforms = ["linux", "macos"]
+
+# Popup para adicionar máquina a partir do ~/.ssh/config
+[[panes]]
+id = "add-machine-picker"
+title = "Adicionar Máquina SSH"
+placement = "popup"
+width = "80%"
+height = "70%"
+command = ["bash", "bin/add-machine-picker.sh"]
+
+# Popup para remover máquina conectada no Herdr
+[[panes]]
+id = "remove-machine-picker"
+title = "Remover Máquina Herdr"
+placement = "popup"
+width = "80%"
+height = "60%"
+command = ["bash", "bin/remove-machine-picker.sh"]
+
+# Ações que podem ser disparadas por atalhos de teclado ou comandos da API
+[[actions]]
+id = "add-machine"
+title = "Adicionar máquina SSH (~/.ssh/config)"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-picker.sh", "add"]
+
+[[actions]]
+id = "remove-machine"
+title = "Remover máquina SSH do Herdr"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-picker.sh", "remove"]

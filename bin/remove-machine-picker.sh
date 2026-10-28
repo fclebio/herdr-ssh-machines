@@ -80,8 +80,8 @@ echo -e "Ou digite ${BOLD}'n'${RESET} / ${BOLD}[Ctrl+C]${RESET} para cancelar."
 echo ""
 
 read -r -p "Confirmar? [ENTER = Sim, 'n' = Não]: " CONFIRM
-case "${CONFIRM,,}" in
-    ""|s|sim|y|yes)
+case "$CONFIRM" in
+    ""|[sS]|[sS][iI][mM]|[yY]|[yY][eE][sS])
         echo ""
         echo -e "Executando: ${CYAN}herdr machine remove $PROFILE_ID${RESET}..."
         

@@ -53,7 +53,7 @@ fi
 # Abre seleção interativa no fzf
 SELECTED=$(echo "$MACHINE_LIST" | fzf \
     --ansi \
-    --header "ENTER: Remover/Desconectar  |  ESC / Ctrl+C: Cancelar" \
+    --header "ENTER: Selecionar Máquina  |  ESC / Ctrl+C: Cancelar" \
     --prompt "Remover Máquina Herdr > " \
     --height "100%" \
     --reverse) || true
@@ -68,18 +68,20 @@ LABEL=$(echo "$SELECTED" | awk -F'│' '{print $2}' | xargs)
 TARGET=$(echo "$SELECTED" | awk -F'│' '{print $3}' | xargs)
 
 clear
-echo -e "${BOLD}${RED}=== Remover / Desconectar Máquina do Herdr ===${RESET}"
+echo -e "${BOLD}${RED}=== Desconectar e Remover Máquina ===${RESET}"
 echo -e "Máquina: ${BOLD}${LABEL}${RESET}"
 echo -e "ID:      ${CYAN}${PROFILE_ID}${RESET}"
 echo -e "Target:  ${TARGET}"
 echo "---------------------------------------------------"
-echo "Nota: Isso desconectará a máquina do Herdr local."
-echo "As sessões e agentes remotos continuarão salvos no servidor remoto."
+echo "A máquina será desconectada e você retornará ao workspace Local."
+echo ""
+echo -e "Pressione ${BOLD}${GREEN}[ENTER]${RESET} para confirmar a remoção"
+echo -e "Ou digite ${BOLD}'n'${RESET} / ${BOLD}[Ctrl+C]${RESET} para cancelar."
 echo ""
 
-read -r -p "Confirma a remoção da máquina '$LABEL'? [s/N]: " CONFIRM
+read -r -p "Confirmar? [ENTER = Sim, 'n' = Não]: " CONFIRM
 case "${CONFIRM,,}" in
-    s|sim|y|yes)
+    ""|s|sim|y|yes)
         echo ""
         echo "Desconectando e removendo perfil..."
         
@@ -97,25 +99,12 @@ case "${CONFIRM,,}" in
             fi
 
             # 4. Retorna o foco para o workspace Local
-            LOCAL_WS=$("$HERDR" workspace list 2>/dev/null | python3 -c '
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    workspaces = data.get("result", {}).get("workspaces", [])
-    if workspaces:
-        print(workspaces[0].get("workspace_id", "1"))
-    else:
-        print("1")
-except Exception:
-    print("1")
-' 2>/dev/null || echo "1")
-            
-            "$HERDR" workspace focus "$LOCAL_WS" 2>/dev/null || true
+            "$HERDR" workspace focus 1 2>/dev/null || true
 
             echo ""
-            echo -e "${GREEN}✓ Máquina '${LABEL}' desconectada e removida com sucesso!${RESET}"
+            echo -e "${GREEN}✓ Máquina '${LABEL}' removida e desconectada com sucesso!${RESET}"
             echo "Alternando para o workspace Local..."
-            sleep 2
+            sleep 1.5
         else
             echo ""
             echo -e "${RED}Erro ao remover a máquina do Herdr.${RESET}"

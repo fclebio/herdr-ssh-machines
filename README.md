@@ -12,7 +12,73 @@ Plugin para o [Herdr](https://herdr.dev) para adicionar e remover máquinas SSH 
   - Ao pressionar `Enter`, executa `herdr machine add <host> --label <host>`, conectando a máquina ao Herdr e listando-a na barra lateral.
 - **Remover Máquina Conectada (`prefix + M` / `Ctrl+B Shift+M`):**
   - Abre um popup listando as máquinas atualmente ativas no Herdr.
-  - Seleção com `fzf` e confirmação antes de remover via `herdr machine remove <id>`.
+  - Seleção com `fzf` e confirmação rápida apertando **`Enter`** novamente.
+  - Fecha o túnel SSH em segundo plano e retorna automaticamente ao workspace Local.
+
+---
+
+## Atalhos Recomendados no Herdr (`~/.config/herdr/config.toml`)
+
+No seu arquivo de configuração `~/.config/herdr/config.toml`:
+
+```toml
+[keys]
+prefix = "ctrl+b"
+
+# Navegar entre as máquinas (Workspaces):
+# Ctrl+B depois Alt+1 = Máquina Local (Workspace 1)
+# Ctrl+B depois Alt+2 = Máquina Remota 2
+# Ctrl+B depois Alt+3 = Máquina Remota 3 (até Alt+9)
+switch_workspace = "prefix+alt+1..9"
+
+# Navegar entre máquinas com setas (anterior / próxima):
+previous_workspace = "prefix+left"
+next_workspace = "prefix+right"
+
+# Atalho dedicado para ir DIRETO para a Máquina Local:
+# Pressione Ctrl+B e depois a barra de Espaço:
+[[keys.command]]
+key = "prefix+space"
+type = "shell"
+command = "herdr workspace focus 1"
+description = "Ir para Máquina Local"
+
+# Atalhos do plugin herdr-ssh-machines:
+[[keys.command]]
+key = "prefix+m"
+type = "plugin_action"
+command = "herdr-ssh-machines.add-machine"
+description = "Adicionar máquina SSH ao Herdr"
+
+[[keys.command]]
+key = "prefix+shift+m"
+type = "plugin_action"
+command = "herdr-ssh-machines.remove-machine"
+description = "Remover máquina SSH do Herdr"
+```
+
+---
+
+## Como Navegar e Usar no Dia a Dia
+
+### 1. Alternando entre Máquinas
+* **Ir direto para a Máquina Local:** Pressione **`Ctrl+B`** e em seguida a **barra de espaço** (`prefix+space`).
+* **Ir para uma máquina pelo número:**
+  - `Ctrl+B` depois `Alt+1` -> Máquina Local (Workspace 1)
+  - `Ctrl+B` depois `Alt+2` -> Máquina Remota 2
+  - `Ctrl+B` depois `Alt+3` -> Máquina Remota 3
+* **Navegar para a próxima/anterior:** `Ctrl+B` depois `Seta Direita` / `Seta Esquerda`.
+* **Workspace Picker visual (funciona em qualquer máquina):** Pressione **`Ctrl+B w`** e escolha a máquina com as setas.
+
+### 2. Adicionar uma nova máquina SSH
+1. Certifique-se de estar no workspace Local (se estiver em um servidor remoto, basta dar `Ctrl+B Espaço`).
+2. Pressione **`Ctrl+B`** e depois **`m`**.
+3. Escolha o servidor com `fzf` e dê **`Enter`**. A máquina será conectada e adicionada à barra lateral!
+
+### 3. Remover uma máquina conectada
+1. Pressione **`Ctrl+B`** e depois **`Shift+M`** (M maiúsculo).
+2. Selecione a máquina no `fzf` e pressione **`Enter`**.
+3. Pressione **`Enter`** novamente para confirmar. A máquina será desconectada e a tela voltará automaticamente para o Local!
 
 ---
 
@@ -32,78 +98,21 @@ Plugin para o [Herdr](https://herdr.dev) para adicionar e remover máquinas SSH 
 
 ### Método 1: Instalação Direta via GitHub (Recomendado)
 
-Se você publicou o plugin no seu GitHub (ex.: `github.com/SEU_USUARIO/herdr-ssh-machines`), basta rodar na máquina de destino:
-
 ```bash
-herdr plugin install SEU_USUARIO/herdr-ssh-machines
+herdr plugin install fclebio/herdr-ssh-machines
 ```
-
-O Herdr baixará, validará e ativará o plugin automaticamente!
-
----
 
 ### Método 2: Instalação Manual via Git Clone
 
-Se preferir clonar manualmente o repositório na máquina:
-
 ```bash
-# 1. Clone o repositório em uma pasta de sua escolha (ex: ~/herdr-ssh-machines)
-git clone https://github.com/SEU_USUARIO/herdr-ssh-machines.git ~/herdr-ssh-machines
-
-# 2. Acesse a pasta e vincule o plugin no Herdr
+git clone https://github.com/fclebio/herdr-ssh-machines.git ~/herdr-ssh-machines
 cd ~/herdr-ssh-machines
 herdr plugin link .
 ```
 
-Você pode confirmar que o plugin está ativo rodando:
-```bash
-herdr plugin list
-```
-
----
-
-## Configuração dos Atalhos (`~/.config/herdr/config.toml`)
-
-Na máquina onde o plugin foi instalado, abra o arquivo `~/.config/herdr/config.toml` (crie se não existir) e adicione:
-
-```toml
-[keys]
-prefix = "ctrl+b"
-
-# Atalho para abrir o seletor de adicionar máquinas
-[[keys.command]]
-key = "prefix+m"
-type = "plugin_action"
-command = "herdr-ssh-machines.add-machine"
-description = "Adicionar máquina SSH ao Herdr"
-
-# Atalho para abrir o seletor de remover máquinas
-[[keys.command]]
-key = "prefix+shift+m"
-type = "plugin_action"
-command = "herdr-ssh-machines.remove-machine"
-description = "Remover máquina SSH do Herdr"
-```
-
-*(Opcional: se preferir usar atalhos simultâneos diretos sem prefixo, você também pode adicionar `key = "ctrl+alt+m"`).*
-
-### Aplicar a Configuração
-
-1. Recarregue a configuração no servidor:
-   ```bash
-   herdr server reload-config
-   ```
-2. Para o cliente do terminal compilar os novos atalhos de teclado:
-   - Pressione **`Ctrl+B`** e depois **`q`** para desanexar da sessão.
-   - Execute **`herdr`** no terminal para reanexar (todos os seus processos, telas e agentes continuarão rodando normalmente).
-
 ---
 
 ## Organizando Servidores por Clientes/Grupos no `~/.ssh/config`
-
-O plugin detecta grupos de servidores de duas maneiras práticas:
-
-### Opção 1: Comentários no `~/.ssh/config` (Recomendado)
 
 Basta adicionar um comentário `# Cliente: Nome` ou simplesmente `# Nome` antes ou na mesma linha do `Host`:
 
@@ -123,30 +132,4 @@ Host loja-web loja-worker
     User ubuntu
 ```
 
-No `fzf`, ao digitar `Alfa` ou `Loja`, o filtro já trará apenas os servidores daquele cliente!
-
-### Opção 2: Arquivos separados com `Include`
-
-Você pode separar cada cliente em um arquivo próprio dentro de `~/.ssh/conf.d/`:
-
-No seu `~/.ssh/config`:
-```ssh
-Include conf.d/*.conf
-```
-
-E os arquivos:
-- `~/.ssh/conf.d/cliente-alfa.conf`
-- `~/.ssh/conf.d/cliente-beta.conf`
-
-O plugin usará automaticamente o nome do arquivo (`cliente-alfa`, `cliente-beta`) como o grupo de cada máquina.
-
----
-
-## Como Usar
-
-1. Pressione **`Ctrl+B`**, solte e pressione **`m`**:
-   - O popup abrirá com a busca interativa `fzf`.
-   - Digite o nome do servidor, do cliente ou do IP.
-   - Pressione **`Enter`**: a máquina será conectada e adicionada à barra lateral do Herdr!
-2. Pressione **`Ctrl+B`**, solte e pressione **`Shift+M`** (ou seja, `M` maiúsculo):
-   - Selecione a máquina ativa que deseja remover e confirme com `s`.
+No `fzf`, ao digitar `Alfa` ou `Loja`, o filtro trará apenas os servidores daquele cliente!

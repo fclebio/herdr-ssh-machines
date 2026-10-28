@@ -33,15 +33,14 @@ except Exception:
     data = []
 
 if not isinstance(data, list):
-    # Se vier encapsulado em result ou similar
     data = data.get("result", {}).get("machines", []) if isinstance(data, dict) else []
 
 for item in data:
-    pid = item.get("profile_id", item.get("id", "unknown"))
+    pid = item.get("id", item.get("profile_id", "unknown"))
     label = item.get("label", pid)
-    target = item.get("ssh_target", item.get("host", ""))
+    target = item.get("target", item.get("ssh_target", item.get("host", "")))
     enabled = "ativo" if item.get("enabled", True) else "desabilitado"
-    print(f"{pid:<34} │ {label:<20} │ {target:<25} │ {enabled}")
+    print(f"{pid:<34} │ {label:<22} │ {target:<25} │ {enabled}")
 ' "$MACHINES_JSON")
 
 if [ -z "$MACHINE_LIST" ]; then
@@ -54,7 +53,7 @@ fi
 # Abre seleção interativa no fzf
 SELECTED=$(echo "$MACHINE_LIST" | fzf \
     --ansi \
-    --header "ENTER: Remover Máquina  |  ESC / Ctrl+C: Cancelar" \
+    --header "ENTER: Remover/Desconectar  |  ESC / Ctrl+C: Cancelar" \
     --prompt "Remover Máquina Herdr > " \
     --height "100%" \
     --reverse) || true
@@ -63,27 +62,63 @@ if [ -z "$SELECTED" ]; then
     exit 0
 fi
 
-# Extrai o profile_id e label
+# Extrai o ID, label e target
 PROFILE_ID=$(echo "$SELECTED" | awk '{print $1}')
 LABEL=$(echo "$SELECTED" | awk -F'│' '{print $2}' | xargs)
+TARGET=$(echo "$SELECTED" | awk -F'│' '{print $3}' | xargs)
 
 clear
-echo -e "${BOLD}${RED}=== Remover Máquina do Herdr ===${RESET}"
-echo -e "Máquina selecionada: ${BOLD}${LABEL}${RESET} (ID: ${CYAN}${PROFILE_ID}${RESET})"
-echo ""
-echo "Nota: Isso apenas desconecta a máquina do seu Herdr local."
-echo "As sessões e agentes continuarão rodando no servidor remoto normalmente."
+echo -e "${BOLD}${RED}=== Remover / Desconectar Máquina do Herdr ===${RESET}"
+echo -e "Máquina: ${BOLD}${LABEL}${RESET}"
+echo -e "ID:      ${CYAN}${PROFILE_ID}${RESET}"
+echo -e "Target:  ${TARGET}"
+echo "---------------------------------------------------"
+echo "Nota: Isso desconectará a máquina do Herdr local."
+echo "As sessões e agentes remotos continuarão salvos no servidor remoto."
 echo ""
 
 read -r -p "Confirma a remoção da máquina '$LABEL'? [s/N]: " CONFIRM
 case "${CONFIRM,,}" in
     s|sim|y|yes)
         echo ""
+        echo "Desconectando e removendo perfil..."
+        
+        # 1. Desabilita primeiro a máquina
+        "$HERDR" machine disable "$PROFILE_ID" 2>/dev/null || true
+        
+        # 2. Remove o perfil da máquina salva
         if "$HERDR" machine remove "$PROFILE_ID"; then
-            echo -e "${GREEN}✓ Máquina '${LABEL}' removida com sucesso do Herdr!${RESET}"
-            sleep 1.5
+            # 3. Fecha conexões persistentes OpenSSH ativas (ControlPersist)
+            if [ -n "$TARGET" ]; then
+                ssh -O exit "$TARGET" 2>/dev/null || true
+            fi
+            if [ -n "$LABEL" ]; then
+                ssh -O exit "$LABEL" 2>/dev/null || true
+            fi
+
+            # 4. Retorna o foco para o workspace Local
+            LOCAL_WS=$("$HERDR" workspace list 2>/dev/null | python3 -c '
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    workspaces = data.get("result", {}).get("workspaces", [])
+    if workspaces:
+        print(workspaces[0].get("workspace_id", "1"))
+    else:
+        print("1")
+except Exception:
+    print("1")
+' 2>/dev/null || echo "1")
+            
+            "$HERDR" workspace focus "$LOCAL_WS" 2>/dev/null || true
+
+            echo ""
+            echo -e "${GREEN}✓ Máquina '${LABEL}' desconectada e removida com sucesso!${RESET}"
+            echo "Alternando para o workspace Local..."
+            sleep 2
         else
-            echo -e "${RED}Erro ao remover a máquina.${RESET}"
+            echo ""
+            echo -e "${RED}Erro ao remover a máquina do Herdr.${RESET}"
             read -r -p "Pressione Enter para fechar..."
         fi
         ;;

@@ -36,11 +36,11 @@ if not isinstance(data, list):
     data = data.get("result", {}).get("machines", []) if isinstance(data, dict) else []
 
 for item in data:
-    pid = item.get("id", item.get("profile_id", "unknown"))
-    label = item.get("label", pid)
-    target = item.get("target", item.get("ssh_target", item.get("host", "")))
+    pid = item.get("id") or item.get("profile_id") or "unknown"
+    label = item.get("label") or pid
+    target = item.get("target") or item.get("ssh_target") or item.get("host") or ""
     enabled = "ativo" if item.get("enabled", True) else "desabilitado"
-    print(f"{pid:<34} │ {label:<22} │ {target:<25} │ {enabled}")
+    print(f"{pid} │ {label:<22} │ {target:<25} │ {enabled}")
 ' "$MACHINES_JSON")
 
 if [ -z "$MACHINE_LIST" ]; then
@@ -62,8 +62,8 @@ if [ -z "$SELECTED" ]; then
     exit 0
 fi
 
-# Extrai o ID, label e target
-PROFILE_ID=$(echo "$SELECTED" | awk '{print $1}')
+# Extrai o ID, label e target com segurança
+PROFILE_ID=$(echo "$SELECTED" | awk -F'│' '{print $1}' | xargs)
 LABEL=$(echo "$SELECTED" | awk -F'│' '{print $2}' | xargs)
 TARGET=$(echo "$SELECTED" | awk -F'│' '{print $3}' | xargs)
 
@@ -83,33 +83,29 @@ read -r -p "Confirmar? [ENTER = Sim, 'n' = Não]: " CONFIRM
 case "${CONFIRM,,}" in
     ""|s|sim|y|yes)
         echo ""
-        echo "Desconectando e removendo perfil..."
+        echo -e "Executando: ${CYAN}herdr machine remove $PROFILE_ID${RESET}..."
         
-        # 1. Desabilita primeiro a máquina
-        "$HERDR" machine disable "$PROFILE_ID" 2>/dev/null || true
+        # Executa a remoção capturando saída e status
+        REMOVE_OUTPUT=$("$HERDR" machine remove "$PROFILE_ID" 2>&1) || true
         
-        # 2. Remove o perfil da máquina salva
-        if "$HERDR" machine remove "$PROFILE_ID"; then
-            # 3. Fecha conexões persistentes OpenSSH ativas (ControlPersist)
-            if [ -n "$TARGET" ]; then
-                ssh -O exit "$TARGET" 2>/dev/null || true
-            fi
-            if [ -n "$LABEL" ]; then
-                ssh -O exit "$LABEL" 2>/dev/null || true
-            fi
-
-            # 4. Retorna o foco para o workspace Local
-            "$HERDR" workspace focus 1 2>/dev/null || true
-
-            echo ""
-            echo -e "${GREEN}✓ Máquina '${LABEL}' removida e desconectada com sucesso!${RESET}"
-            echo "Alternando para o workspace Local..."
-            sleep 1.5
-        else
-            echo ""
-            echo -e "${RED}Erro ao remover a máquina do Herdr.${RESET}"
-            read -r -p "Pressione Enter para fechar..."
+        # Encerra qualquer túnel SSH persistente (OpenSSH ControlPersist)
+        if [ -n "$TARGET" ]; then
+            ssh -O exit "$TARGET" 2>/dev/null || true
         fi
+        if [ -n "$LABEL" ]; then
+            ssh -O exit "$LABEL" 2>/dev/null || true
+        fi
+
+        # Retorna o foco para o workspace Local (Workspace 1)
+        "$HERDR" workspace focus 1 2>/dev/null || true
+
+        echo ""
+        if [ -n "$REMOVE_OUTPUT" ]; then
+            echo "$REMOVE_OUTPUT"
+        fi
+        echo -e "${GREEN}✓ Máquina '${LABEL}' removida com sucesso do Herdr!${RESET}"
+        echo "Alternando para o workspace Local..."
+        sleep 2
         ;;
     *)
         echo "Operação cancelada."
